@@ -26,9 +26,45 @@ def create_state() -> str:
     return secrets.token_hex(16)
 
 
-def build_authorize_url(originator: str) -> Tuple[OAuthState, str]:
+def _encode_state_with_redirect(state: str, actual_redirect_uri: str) -> str:
+    """Encode the actual redirect URI into the state parameter using base64."""
+    payload = json.dumps({"s": state, "r": actual_redirect_uri})
+    return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def _decode_state(state: str) -> Tuple[str, Optional[str]]:
+    """Decode state parameter to extract original state and actual redirect URI."""
+    try:
+        padding = "=" * (-len(state) % 4)
+        decoded = base64.urlsafe_b64decode(state + padding)
+        payload = json.loads(decoded.decode("utf-8"))
+        return payload.get("s", state), payload.get("r")
+    except Exception:
+        return state, None
+
+
+def build_authorize_url(originator: str, redirect_uri: Optional[str] = None) -> Tuple[OAuthState, str]:
     verifier, challenge = generate_pkce()
     state = create_state()
+    
+    # Approach B: Always use library's registered redirect in the OAuth URL
+    # If a custom redirect is provided, encode it in the state parameter
+    if redirect_uri is not None and redirect_uri != REDIRECT_URI:
+        oauth_state = OAuthState(
+            verifier=verifier,
+            state=state,
+            created_at=int(time.time() * 1000),
+            redirect_uri=redirect_uri,
+        )
+        state = _encode_state_with_redirect(state, redirect_uri)
+    else:
+        oauth_state = OAuthState(
+            verifier=verifier,
+            state=state,
+            created_at=int(time.time() * 1000),
+            redirect_uri=None,
+        )
+    
     params = {
         "response_type": "code",
         "client_id": CLIENT_ID,
@@ -42,7 +78,6 @@ def build_authorize_url(originator: str) -> Tuple[OAuthState, str]:
         "originator": originator,
     }
     url = httpx.URL(AUTHORIZE_URL).copy_merge_params(params)
-    oauth_state = OAuthState(verifier=verifier, state=state, created_at=int(time.time() * 1000))
     return oauth_state, str(url)
 
 

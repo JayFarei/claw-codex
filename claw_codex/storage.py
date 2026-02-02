@@ -20,6 +20,7 @@ class OAuthState:
     verifier: str
     state: str
     created_at: int
+    redirect_uri: Optional[str] = None
 
 
 def _ensure_parent(path: Path) -> None:
@@ -70,10 +71,10 @@ def save_pkce(state: OAuthState, path: Path = PKCE_FILE, max_entries: int = 5) -
             entries = []
 
     entries = [e for e in entries if e.get("state") != state.state]
-    entries.insert(
-        0,
-        {"verifier": state.verifier, "state": state.state, "created_at": state.created_at},
-    )
+    entry = {"verifier": state.verifier, "state": state.state, "created_at": state.created_at}
+    if state.redirect_uri is not None:
+        entry["redirect_uri"] = state.redirect_uri
+    entries.insert(0, entry)
     entries = entries[: max_entries if max_entries > 0 else 1]
     path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
 
@@ -102,6 +103,7 @@ def load_pkce(state: Optional[str] = None, path: Path = PKCE_FILE) -> Optional[O
                     verifier=str(entry.get("verifier", "")),
                     state=str(entry.get("state", "")),
                     created_at=int(entry.get("created_at", 0)),
+                    redirect_uri=entry.get("redirect_uri"),
                 )
         return None
 
@@ -111,6 +113,7 @@ def load_pkce(state: Optional[str] = None, path: Path = PKCE_FILE) -> Optional[O
             verifier=str(entry.get("verifier", "")),
             state=str(entry.get("state", "")),
             created_at=int(entry.get("created_at", 0)),
+            redirect_uri=entry.get("redirect_uri"),
         )
 
     return None

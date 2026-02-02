@@ -155,12 +155,12 @@ class AsyncClawCodexClient:
             "valid": credentials_valid(creds),
         }
 
-    def start_auth(self, originator: Optional[str] = None) -> AuthStartResult:
-        oauth_state, url = build_authorize_url(originator or self.originator)
+    def start_auth(self, originator: Optional[str] = None, redirect_uri: Optional[str] = None) -> AuthStartResult:
+        oauth_state, url = build_authorize_url(originator or self.originator, redirect_uri=redirect_uri)
         save_pkce(oauth_state, path=self.pkce_file)
-        return AuthStartResult(authorize_url=url, redirect_uri=REDIRECT_URI, state=oauth_state.state)
+        return AuthStartResult(authorize_url=url, redirect_uri=oauth_state.redirect_uri or REDIRECT_URI, state=oauth_state.state)
 
-    async def exchange_code(self, code_or_url: str) -> OAuthCredentials:
+    async def exchange_code(self, code_or_url: str, redirect_uri: Optional[str] = None) -> OAuthCredentials:
         code, state = parse_authorization_input(code_or_url)
         if not code:
             raise ValueError("Missing authorization code")
@@ -176,7 +176,9 @@ class AsyncClawCodexClient:
                 "Missing PKCE state. Call start_auth() and use the full redirect URL (including state)."
             )
 
-        creds = await exchange_authorization_code(code, pkce.verifier)
+        # Use provided redirect_uri, or fall back to the one stored with PKCE state, or use default
+        effective_redirect_uri = redirect_uri or pkce.redirect_uri or REDIRECT_URI
+        creds = await exchange_authorization_code(code, pkce.verifier, redirect_uri=effective_redirect_uri)
         save_credentials(creds, path=self.auth_file)
         return creds
 
@@ -359,11 +361,11 @@ class ClawCodexClient:
     def auth_status(self) -> Dict[str, Any]:
         return self._client.auth_status()
 
-    def start_auth(self, originator: Optional[str] = None) -> AuthStartResult:
-        return self._client.start_auth(originator=originator)
+    def start_auth(self, originator: Optional[str] = None, redirect_uri: Optional[str] = None) -> AuthStartResult:
+        return self._client.start_auth(originator=originator, redirect_uri=redirect_uri)
 
-    def exchange_code(self, code_or_url: str) -> OAuthCredentials:
-        return self._run(self._client.exchange_code(code_or_url))
+    def exchange_code(self, code_or_url: str, redirect_uri: Optional[str] = None) -> OAuthCredentials:
+        return self._run(self._client.exchange_code(code_or_url, redirect_uri=redirect_uri))
 
     def refresh(self) -> OAuthCredentials:
         return self._run(self._client.refresh())

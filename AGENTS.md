@@ -51,11 +51,13 @@
   - `python -m pytest -q`
   - `python -m build`
   - `python -m twine check dist/*`
-- Commit, tag, and push:
-  - `git commit -m "release: claw-codex vX.Y.Z"`
+- Commit (if there are changes), tag, and push:
+  - `git commit -m "release: claw-codex vX.Y.Z"` (only if working tree has changes)
   - `git tag -a vX.Y.Z -m "claw-codex vX.Y.Z"`
-  - `git push origin main --tags`
-- Create a GitHub Release for the tag; this triggers `.github/workflows/publish.yml` to publish to PyPI.
+  - `git push origin vX.Y.Z` (or `git push origin main --tags` if you committed)
+- Create a GitHub Release (triggers PyPI publish via workflow):
+  - `gh release create vX.Y.Z --title "claw-codex vX.Y.Z" --notes "Release notes here" --repo JayFarei/claw-codex`
+  - This triggers `.github/workflows/publish.yml` to publish to PyPI automatically
 - Verify published package:
   - `pip install claw-codex==X.Y.Z`
   - `python -c "from claw_codex import ClawCodexClient; print('ok')"`

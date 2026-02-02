@@ -1,0 +1,5 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+claw_codex_proxy.egg-info/

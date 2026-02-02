@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from .codex import build_request_body, collect_codex_response, iter_codex_events
 from .config import DEFAULT_MODEL, MOCK_MODE, ORIGINATOR, REDIRECT_URI, SUCCESS_HTML
 from .oauth import (
+    _decode_state,
     build_authorize_url,
     exchange_authorization_code,
     parse_authorization_input,
@@ -23,7 +24,7 @@ from .storage import (
     save_pkce,
 )
 
-app = FastAPI(title="Claw Codex OpenRouter Mock", version="0.2.1")
+app = FastAPI(title="Claw Codex OpenRouter Mock", version="0.2.2")
 
 DEMO_HTML = """<!doctype html>
 <html lang="en">
@@ -367,6 +368,11 @@ DEMO_HTML = """<!doctype html>
       <section class="card auth-card">
         <h2>Auth</h2>
         <p class="status" id="auth-status">Status: unknown</p>
+        <label for="custom-redirect">Custom Redirect URI (optional)</label>
+        <div class="row input-row">
+          <input id="custom-redirect" placeholder="http://localhost:8001/api/settings/codex/callback" />
+        </div>
+        <p class="hint">For testing downstream integration. Leave empty to use default.</p>
         <div class="row">
           <button id="start-auth">Start OAuth</button>
           <button id="check-auth" class="secondary">Check Status</button>
@@ -400,6 +406,7 @@ DEMO_HTML = """<!doctype html>
     const authStatus = document.getElementById('auth-status');
     const authUrl = document.getElementById('auth-url');
     const authCodeInput = document.getElementById('auth-code');
+    const customRedirectInput = document.getElementById('custom-redirect');
     const chatLog = document.getElementById('chat-log');
     const chatInput = document.getElementById('chat-input');
     const sendButton = document.getElementById('send-chat');
@@ -434,7 +441,13 @@ DEMO_HTML = """<!doctype html>
     }
 
     document.getElementById('start-auth').addEventListener('click', async () => {
-      const res = await fetch('/auth/codex/start', { method: 'POST' });
+      const customRedirect = customRedirectInput.value.trim();
+      const body = customRedirect ? JSON.stringify({ redirect_uri: customRedirect }) : '';
+      const res = await fetch('/auth/codex/start', {
+        method: 'POST',
+        headers: customRedirect ? { 'content-type': 'application/json' } : {},
+        body: body || undefined
+      });
       const data = await res.json();
       authUrl.textContent = data.authorize_url;
       authUrl.href = data.authorize_url;
@@ -626,23 +639,28 @@ async def auth_status() -> JSONResponse:
 
 
 @app.post("/auth/codex/start")
-async def auth_start(originator: Optional[str] = None) -> JSONResponse:
-    oauth_state, url = build_authorize_url(originator or ORIGINATOR)
+async def auth_start(originator: Optional[str] = None, redirect_uri: Optional[str] = None) -> JSONResponse:
+    oauth_state, url = build_authorize_url(originator or ORIGINATOR, redirect_uri=redirect_uri)
     save_pkce(oauth_state)
-    return JSONResponse({"authorize_url": url, "redirect_uri": REDIRECT_URI, "state": oauth_state.state})
+    return JSONResponse({"authorize_url": url, "redirect_uri": oauth_state.redirect_uri or REDIRECT_URI, "state": oauth_state.state})
 
 
 async def _handle_auth_callback(code: Optional[str], state: Optional[str]) -> HTMLResponse:
     if not code:
         raise HTTPException(status_code=400, detail="Missing authorization code")
-    pkce = load_pkce(state)
+    
+    # Decode state to extract original state and actual redirect (Approach B)
+    original_state, actual_redirect = _decode_state(state) if state else (state, None)
+    pkce = load_pkce(original_state)
     if not pkce:
         raise HTTPException(
             status_code=400,
             detail="Missing PKCE state. Call /auth/codex/start and paste the full redirect URL (including state).",
         )
     try:
-        creds = await exchange_authorization_code(code, pkce.verifier)
+        # Use actual redirect from state (if present) or from PKCE storage
+        effective_redirect_uri = actual_redirect or pkce.redirect_uri or REDIRECT_URI
+        creds = await exchange_authorization_code(code, pkce.verifier, redirect_uri=effective_redirect_uri)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     save_credentials(creds)
@@ -669,14 +687,19 @@ async def auth_exchange(payload: Dict[str, Any] = Body(...)) -> JSONResponse:
         creds = _mock_credentials()
         save_credentials(creds)
         return JSONResponse({"ok": True, "expires": creds.expires, "account_id": creds.account_id})
-    pkce = load_pkce(state)
+    
+    # Decode state to extract original state and actual redirect (Approach B)
+    original_state, actual_redirect = _decode_state(state) if state else (state, None)
+    pkce = load_pkce(original_state)
     if not pkce:
         raise HTTPException(
             status_code=400,
             detail="Missing PKCE state. Call /auth/codex/start and paste the full redirect URL (including state).",
         )
     try:
-        creds = await exchange_authorization_code(code, pkce.verifier)
+        # Use actual redirect from state (if present) or from PKCE storage
+        effective_redirect_uri = actual_redirect or pkce.redirect_uri or REDIRECT_URI
+        creds = await exchange_authorization_code(code, pkce.verifier, redirect_uri=effective_redirect_uri)
     except RuntimeError as exc:
         existing = load_credentials()
         if existing and credentials_valid(existing):

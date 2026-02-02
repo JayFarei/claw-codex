@@ -44,6 +44,74 @@ resp = client.chat_completions(
 print(resp["choices"][0]["message"]["content"])
 ```
 
+## Dynamic Redirect URI Integration
+
+For downstream applications that need to redirect users back to their own callback URL after OAuth authentication, this library supports encoding the actual redirect URI in the OAuth state parameter.
+
+### How It Works
+
+1. **Library's registered redirect**: The OAuth authorization URL always uses the library's registered redirect URI (`http://localhost:1455/auth/callback`)
+2. **State encoding**: When you provide a custom `redirect_uri`, it's base64-encoded into the OAuth state parameter
+3. **Callback handling**: When OpenAI redirects back to the library's callback, the library decodes the state to extract your actual redirect URI
+4. **Token exchange**: The library uses your actual redirect URI when exchanging the code for tokens
+
+This approach works because OpenAI only validates the `redirect_uri` parameter during token exchange, not during the callback.
+
+### Usage for Downstream Apps
+
+```python
+from claw_codex import ClawCodexClient
+
+client = ClawCodexClient()
+
+# Start auth with your custom redirect URI
+# This will redirect back to your app after OAuth
+auth = client.start_auth(
+    redirect_uri="http://localhost:8001/api/settings/codex/callback"
+)
+
+# Redirect your user to auth.authorize_url
+# After authentication, OpenAI will redirect to:
+# http://localhost:1455/auth/callback?code=...&state=...
+# 
+# The library's callback will decode the state and use your redirect URI
+# for the token exchange
+
+# Exchange the code (the library automatically uses the correct redirect_uri)
+creds = client.exchange_code("PASTE_REDIRECT_URL_OR_CODE")
+```
+
+### Server API with Custom Redirect
+
+```bash
+# Start auth with custom redirect
+curl -X POST http://localhost:1455/auth/codex/start \
+  -H "Content-Type: application/json" \
+  -d '{"redirect_uri": "http://localhost:8001/api/settings/codex/callback"}'
+
+# Response:
+# {
+#   "authorize_url": "https://auth.openai.com/...",
+#   "redirect_uri": "http://localhost:8001/api/settings/codex/callback",
+#   "state": "..."
+# }
+```
+
+### Testing the Integration
+
+1. Start the server: `claw-codex serve`
+2. Open the demo: `http://localhost:1455/demo`
+3. Enter your custom redirect URI in the "Custom Redirect URI" field
+4. Click "Start OAuth" and complete the flow
+5. The library will automatically handle the state encoding/decoding
+
+### Important Notes
+
+- The custom redirect URI is encoded in the state parameter using base64
+- The library's callback URL (`http://localhost:1455/auth/callback`) must be registered with OpenAI
+- Your custom redirect URI doesn't need to be registered with OpenAI
+- This approach enables seamless integration without requiring multiple OAuth app registrations
+
 ## CLI Authentication and Chat
 
 - Start server (existing behavior):

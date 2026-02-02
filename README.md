@@ -1,72 +1,92 @@
-# Claw Codex OpenRouter Mock
+# Claw Codex Python Library + Local Server
 
-Local FastAPI server that authenticates with OpenAI Codex OAuth (ChatGPT subscription) and exposes an OpenRouter-like `/v1/chat/completions` endpoint for a model called `claw/codex`.
+Local tools for using Codex OAuth credentials (ChatGPT subscription) in two ways:
 
-This is intended for local testing and investigation. Make sure your usage complies with provider terms.
+- **As a reusable library** for direct `chat.completions`-style calls.
+- **As a local FastAPI server** with OpenRouter-like endpoints and a demo UI.
 
-## Quick start
+> This project is for local testing/investigation. Make sure usage complies with provider terms.
+
+## Install
+
+```bash
+pip install claw-codex
+```
+
+For local development:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
-claw-codex
-```
-
-The OAuth redirect URI is fixed to `http://localhost:1455/auth/callback`, so the server should run on port `1455`.
-
-Open the demo UI at:
-
-```
-http://127.0.0.1:1455/demo
-```
-
-## OAuth flow
-
-Start login:
-
-```bash
-curl -s -X POST http://127.0.0.1:1455/auth/codex/start | python -m json.tool
-```
-
-Open the `authorize_url` in a browser, log in, and you should see a success page. Tokens are stored in `~/.claw-codex/auth.json`.
-
-If the callback cannot reach the server, copy the redirect URL from the browser and exchange manually:
-
-```bash
-curl -s -X POST http://127.0.0.1:1455/auth/codex/exchange \
-  -H 'content-type: application/json' \
-  -d '{"code": "PASTE_REDIRECT_URL_OR_CODE"}' | python -m json.tool
-```
-
-## OpenRouter-style request
-
-```bash
-curl -s http://127.0.0.1:1455/v1/chat/completions \
-  -H 'content-type: application/json' \
-  -d '{
-    "model": "claw/codex",
-    "messages": [
-      {"role": "system", "content": "You are a helpful assistant."},
-      {"role": "user", "content": "Say hello from Codex."}
-    ],
-    "stream": false
-  }' | python -m json.tool
-```
-
-## Notes
-
-- `claw/codex` is mapped to the Codex model ID from `CLAW_CODEX_MODEL` (default `gpt-5.2`).
-- The server stores credentials in `~/.claw-codex/auth.json` unless overridden with `CLAW_CODEX_AUTH_FILE`.
-- Streaming is supported with `"stream": true`, but only text deltas are emitted (tool calls are ignored).
-
-## Test mode (no real OAuth)
-
-Set `CLAW_CODEX_MOCK=1` to bypass real OAuth and Codex calls (useful for e2e tests).
-
-Run tests:
-
-```bash
 pip install -e '.[dev]'
+```
+
+## Library Quickstart (recommended for other projects)
+
+```python
+from claw_codex import ClawCodexClient
+
+client = ClawCodexClient()
+
+# One-time auth flow
+start = client.start_auth()
+print(start.authorize_url)
+client.exchange_code("PASTE_REDIRECT_URL_OR_CODE")
+
+# OpenRouter-style chat call
+resp = client.chat_completions(
+    model="claw/codex",
+    messages=[
+        {"role": "system", "content": "You are helpful."},
+        {"role": "user", "content": "Say hello from Codex."},
+    ],
+)
+print(resp["choices"][0]["message"]["content"])
+```
+
+## CLI Authentication and Chat
+
+- Start server (existing behavior):
+  - `claw-codex`
+- Interactive CLI auth:
+  - `claw-codex auth login --open-browser`
+- Check auth state:
+  - `claw-codex auth status`
+- Exchange pasted redirect URL/code:
+  - `claw-codex auth exchange 'http://localhost:1455/auth/callback?code=...&state=...'`
+- Send a prompt via library client:
+  - `claw-codex chat "Write a short haiku" --text-only`
+
+Credentials are stored in `~/.claw-codex/auth.json` by default.
+
+## UI and Local Proxy
+
+Run:
+
+```bash
+claw-codex serve
+```
+
+Then open:
+
+- Demo UI: `http://127.0.0.1:1455/demo`
+- Start auth via API: `POST /auth/codex/start`
+- Chat endpoint: `POST /v1/chat/completions`
+
+## Test Mode (no real OAuth)
+
+```bash
+CLAW_CODEX_MOCK=1 pytest
+```
+
+## Testing
+
+```bash
 pytest
 ```
+
+## Publishing
+
+Release instructions for GitHub + PyPI are in `docs/PUBLISHING.md`.
+Library API details and streaming examples are in `docs/LIBRARY.md`.
+Before publishing, update URLs in `pyproject.toml` to your real GitHub repository.

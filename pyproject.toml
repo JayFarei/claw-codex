@@ -1,9 +1,22 @@
 [project]
-name = "claw-codex-proxy"
-version = "0.1.0"
-description = "Local OpenRouter-compatible proxy that uses OpenAI Codex OAuth (ChatGPT subscription)"
+name = "claw-codex"
+version = "0.2.0"
+description = "Codex OAuth Python library with optional local OpenRouter-compatible server"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+keywords = ["codex", "oauth", "fastapi", "openrouter", "chat-completions"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Framework :: FastAPI",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
   "fastapi>=0.110.0",
   "httpx>=0.27.0",
@@ -15,6 +28,11 @@ dependencies = [
 dev = [
   "pytest>=8.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/your-org/claw-codex"
+Repository = "https://github.com/your-org/claw-codex"
+Issues = "https://github.com/your-org/claw-codex/issues"
 
 [project.scripts]
 claw-codex = "claw_codex.cli:main"

@@ -57,8 +57,10 @@ async def iter_codex_events(
     account_id: str,
     body: Dict[str, Any],
     session_id: Optional[str] = None,
+    mock_mode: Optional[bool] = None,
 ) -> AsyncGenerator[Dict[str, Any], None]:
-    if MOCK_MODE:
+    use_mock_mode = MOCK_MODE if mock_mode is None else mock_mode
+    if use_mock_mode:
         async for event in _mock_codex_events(body):
             yield event
         return
@@ -94,12 +96,19 @@ async def collect_codex_response(
     account_id: str,
     body: Dict[str, Any],
     session_id: Optional[str] = None,
+    mock_mode: Optional[bool] = None,
 ) -> Tuple[str, Dict[str, int], Optional[str]]:
     text_parts: List[str] = []
     usage: Dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     finish_reason: Optional[str] = None
 
-    async for event in iter_codex_events(access_token, account_id, body, session_id=session_id):
+    async for event in iter_codex_events(
+        access_token,
+        account_id,
+        body,
+        session_id=session_id,
+        mock_mode=mock_mode,
+    ):
         event_type = event.get("type")
         if event_type == "response.output_text.delta":
             delta = event.get("delta")

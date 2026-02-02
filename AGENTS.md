@@ -38,13 +38,27 @@
 - Name tests `test_<behavior>()` and keep assertions user-visible (status, payload, fields).
 
 ## Commit & Pull Request Guidelines
-- This workspace snapshot has no local `.git` history, so no project-specific convention can be inferred.
 - Recommended commit format: Conventional Commits (e.g., `feat(auth): validate state on exchange`).
 - PRs should include:
   - change summary and rationale,
   - test evidence (`pytest` output),
   - config/env changes,
   - sample request/response when API behavior changes.
+
+## Release & Publishing
+- Bump version in `pyproject.toml` (for example, `0.2.1` -> `0.2.2`).
+- Run release checks:
+  - `python -m pytest -q`
+  - `python -m build`
+  - `python -m twine check dist/*`
+- Commit, tag, and push:
+  - `git commit -m "release: claw-codex vX.Y.Z"`
+  - `git tag -a vX.Y.Z -m "claw-codex vX.Y.Z"`
+  - `git push origin main --tags`
+- Create a GitHub Release for the tag; this triggers `.github/workflows/publish.yml` to publish to PyPI.
+- Verify published package:
+  - `pip install claw-codex==X.Y.Z`
+  - `python -c "from claw_codex import ClawCodexClient; print('ok')"`
 
 ## Security & Configuration Tips
 - Never commit real tokens or `~/.claw-codex/auth.json` contents.

@@ -69,9 +69,12 @@ claw-codex serve
 
 Then open:
 
-- Demo UI: `http://127.0.0.1:1455/demo`
+- Demo UI: `http://<host-or-ip>:1455/demo`
 - Start auth via API: `POST /auth/codex/start`
 - Chat endpoint: `POST /v1/chat/completions`
+
+If you bind to all interfaces (`CLAW_CODEX_HOST=0.0.0.0`), open the demo with your machine IP:
+`http://<your-machine-ip>:1455/demo`.
 
 ## Test Mode (no real OAuth)
 
@@ -87,27 +90,6 @@ pytest
 
 ## Publishing
 
-The repo is configured for **GitHub Actions trusted publishing** to TestPyPI/PyPI.
-
-Quick release flow:
-
-1. Bump `version` in `pyproject.toml`.
-2. Commit, tag, and push:
-   ```bash
-   git add .
-   git commit -m "release: claw-codex vX.Y.Z"
-   git tag -a vX.Y.Z -m "claw-codex vX.Y.Z"
-   git push origin main --tags
-   ```
-3. Create a GitHub Release for that tag (Actions `Publish` runs automatically and uploads to PyPI).
-
-Optional preflight checks:
-
-```bash
-python -m pip install --upgrade build twine
-python -m build
-python -m twine check dist/*
-```
-
-See `docs/PUBLISHING.md` for first-time setup and TestPyPI workflow details.
+Release/publish steps are maintained in `AGENTS.md` (Contributor Guide).
+First-time registry setup details are in `docs/PUBLISHING.md`.
 Library API details and streaming examples are in `docs/LIBRARY.md`.

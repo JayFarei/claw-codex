@@ -23,7 +23,7 @@ from .storage import (
     save_pkce,
 )
 
-app = FastAPI(title="Claw Codex OpenRouter Mock", version="0.1.0")
+app = FastAPI(title="Claw Codex OpenRouter Mock", version="0.2.1")
 
 DEMO_HTML = """<!doctype html>
 <html lang="en">

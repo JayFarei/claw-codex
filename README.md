@@ -87,6 +87,27 @@ pytest
 
 ## Publishing
 
-Release instructions for GitHub + PyPI are in `docs/PUBLISHING.md`.
+The repo is configured for **GitHub Actions trusted publishing** to TestPyPI/PyPI.
+
+Quick release flow:
+
+1. Bump `version` in `pyproject.toml`.
+2. Commit, tag, and push:
+   ```bash
+   git add .
+   git commit -m "release: claw-codex vX.Y.Z"
+   git tag -a vX.Y.Z -m "claw-codex vX.Y.Z"
+   git push origin main --tags
+   ```
+3. Create a GitHub Release for that tag (Actions `Publish` runs automatically and uploads to PyPI).
+
+Optional preflight checks:
+
+```bash
+python -m pip install --upgrade build twine
+python -m build
+python -m twine check dist/*
+```
+
+See `docs/PUBLISHING.md` for first-time setup and TestPyPI workflow details.
 Library API details and streaming examples are in `docs/LIBRARY.md`.
-Before publishing, update URLs in `pyproject.toml` to your real GitHub repository.

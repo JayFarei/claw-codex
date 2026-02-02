@@ -1,88 +1,60 @@
 # Publishing Guide
 
-This project is ready to publish as an open-source Python package and GitHub repository.
+This repository uses GitHub Actions + trusted publishing for releases.
 
-## 1) Prepare metadata
+## First-time setup (one-time)
 
-- Update `pyproject.toml`:
-  - `project.name` (must be unique on PyPI)
-  - `project.urls.*` to your real GitHub repo
-  - version number (`project.version`)
-- Confirm `README.md` reflects current API and CLI usage.
-- Ensure `LICENSE` is present and matches `project.license`.
+1. Create accounts on TestPyPI and PyPI.
+2. In each registry, add a **Trusted Publisher** for:
+   - Owner: `JayFarei`
+   - Repository: `claw-codex`
+   - Workflow: `.github/workflows/publish.yml`
+3. In GitHub, ensure Actions are enabled for this repository.
 
-## 2) Push to GitHub
+## Release workflow (recommended)
 
-```bash
-git init
-git add .
-git commit -m "release: publish claw-codex 0.2.0"
-git branch -M main
-git remote add origin git@github.com:<org-or-user>/<repo>.git
-git push -u origin main
-```
+1. Bump package version in `pyproject.toml`.
+2. Run checks locally:
+   ```bash
+   python -m pip install --upgrade build twine
+   python -m pytest -q
+   python -m build
+   python -m twine check dist/*
+   ```
+3. Commit, tag, and push:
+   ```bash
+   git add .
+   git commit -m "release: claw-codex vX.Y.Z"
+   git tag -a vX.Y.Z -m "claw-codex vX.Y.Z"
+   git push origin main --tags
+   ```
+4. Create a GitHub Release for `vX.Y.Z`.
+5. Confirm success in Actions:
+   - Workflow: `Publish`
+   - Job: `Publish package`
 
-If a remote already exists, just commit and push your branch.
+## Manual publish runs
 
-This repo includes GitHub Actions for:
+- TestPyPI: run workflow `Publish` with input `repository=testpypi`.
+- PyPI: run workflow `Publish` with input `repository=pypi`.
 
-- CI: `.github/workflows/ci.yml`
-- Publishing: `.github/workflows/publish.yml`
+## Verify install
 
-## 3) Build distributions
-
-```bash
-python -m pip install --upgrade build twine
-python -m build
-```
-
-Expected artifacts:
-
-- `dist/<name>-<version>.tar.gz`
-- `dist/<name>-<version>-py3-none-any.whl`
-
-## 4) Verify package before upload
-
-```bash
-twine check dist/*
-```
-
-Optional smoke test in a clean virtualenv:
+From PyPI:
 
 ```bash
-python -m venv /tmp/claw-smoke
-source /tmp/claw-smoke/bin/activate
-pip install dist/*.whl
+python -m venv /tmp/claw-verify
+source /tmp/claw-verify/bin/activate
+pip install claw-codex==X.Y.Z
 python -c "from claw_codex import ClawCodexClient; print('ok')"
 ```
 
-## 5) Publish to TestPyPI (recommended)
+From TestPyPI (safer command):
 
 ```bash
-twine upload --repository testpypi dist/*
+python -m venv /tmp/claw-test
+source /tmp/claw-test/bin/activate
+pip install --index-url https://test.pypi.org/simple/ --no-deps claw-codex==X.Y.Z
+pip install --index-url https://pypi.org/simple/ 'fastapi>=0.110.0' 'httpx>=0.27.0' 'pydantic>=2.6.0' 'uvicorn>=0.27.0'
+python -c "from claw_codex import ClawCodexClient; print('ok')"
 ```
-
-Install test build:
-
-```bash
-pip install -i https://test.pypi.org/simple/ <your-package-name>
-```
-
-Or run the `Publish` workflow manually and select `testpypi`.
-
-## 6) Publish to PyPI
-
-```bash
-twine upload dist/*
-```
-
-Or create a GitHub Release (triggers publish to PyPI), or run the `Publish` workflow with `pypi`.
-
-## 7) Tag release on GitHub
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Create a GitHub Release with changelog notes and the same version.

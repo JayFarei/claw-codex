@@ -21,7 +21,7 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
-## Library Quickstart (recommended for other projects)
+## Library Quickstart
 
 ```python
 from claw_codex import ClawCodexClient

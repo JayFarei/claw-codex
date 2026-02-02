@@ -30,9 +30,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/claw-codex"
-Repository = "https://github.com/your-org/claw-codex"
-Issues = "https://github.com/your-org/claw-codex/issues"
+Homepage = "https://github.com/JayFarei/claw-codex"
+Repository = "https://github.com/JayFarei/claw-codex"
+Issues = "https://github.com/JayFarei/claw-codex/issues"
 
 [project.scripts]
 claw-codex = "claw_codex.cli:main"
